@@ -54,8 +54,7 @@
   (sc/canvas :size [width :by height]
              :paint draw
              :id :canvas
-             :listen [:mouse-clicked mouse-clicked
-                      :key-pressed key-clicked]))
+             :listen [:mouse-clicked mouse-clicked]))
 
 (defn create-frame []
   (sc/frame :title "Hello"
