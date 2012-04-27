@@ -1,5 +1,6 @@
 (ns projection.digits)
 
+
 (defn create-points [& points]
   (concat (map #(cons 0 %) points)
           (map #(cons 1 %) points)))
@@ -17,6 +18,7 @@
   (map (fn [[f0 f1] [b0 b1]] [f0 f1 b1 b0 f0])
        (partition 2 1 s1)
        (partition 2 1 s2)))
+
 
 (def digits-map
   {\0 {:points (create-points

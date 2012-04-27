@@ -2,22 +2,44 @@
   (:require [seesaw [core :as sc]
                     [graphics :as sg]]
             [projection [core :as core]
-                        [digits :as digits]])
+                        [digits :as digits]
+                        [warnock :as warnock]])
   (:import [java.awt.event MouseEvent KeyEvent]))
 
 
-#_(def objects [{:points [[5 1 -1]
-                        [5 1 1]
-                        [5 -1 1]
-                        [5 -1 -1]
-                        [3 0 0]]
-               :faces [[0 1 2 3 0]
-                       [0 1 4 0]
-                       [1 4 2 1]
-                       [2 3 4 2]
-                       [0 4 3 0]]}])
+(def front-back (sg/style :stroke 1 :background "red"))
+(def left-right (sg/style :stroke 1 :background "green"))
+(def up-down (sg/style :stroke 1 :background "blue"))
+(def unknown (sg/style :stroke 1 :background "black"))
 
-(def objects (atom []))
+(defn get-style [points [p1 p2 p3]]
+  (let [[x1 y1 z1] (nth points p1)
+        [x2 y2 z2] (nth points p2)
+        [x3 y3 z3] (nth points p3)]
+    (cond (= x1 x2 x3) front-back
+          (= y1 y2 y3) left-right
+          (= z1 z2 z3) up-down
+          :else unknown)))
+
+(defn attach-styles [{:keys [points faces]}]
+  {:points points
+   :faces (map #(with-meta % {:style (get-style points %)}) faces)})
+
+
+
+#_(def objects (atom [{:points [[20 1 -1]
+                              [20 1 1]
+                              [20 -1 1]
+                              [20 -1 -1]
+                              [22 1 -1]
+                              [22 1 1]
+                              [22 -1 1]
+                              [22 -1 -1]]
+                     :faces [[0 1 2 3 0]
+                             [4 5 6 7 4]]}]))
+
+(def objects (atom [(attach-styles (digits/digits-map \0))
+                    #_(digits/digits-map \1)]))
 
 (def width 750)
 (def height 750)
@@ -59,35 +81,35 @@
              :line (sg/style :stroke 1 :foreground "blue")
              :border (sg/style :stroke 3 :foreground "black")})
 
-(defn draw-points [g points]
-  (doseq [[x y] (remove nil? points)]
-    (sg/draw g
-             (sg/circle x y radius)
-             (styles :point))))
-
-(defn draw-face [g points face]
-  (doseq [[a b] (partition 2 1 face)]
-    (when (every? #(not (nil? (points %))) [a b])
-      (let [[x1 y1] (points a)
-            [x2 y2] (points b)]
-        (sg/draw g
-                 (sg/line x1 y1 x2 y2)
-                 (styles :line))))))
-
-(defn draw-object [g {:keys [points faces]}]
+(defn transform-faces [{:keys [points faces]}]
   (let [transformed (mapv #(core/transform % @config) points)]
-    (draw-points g transformed)
-    (doseq [face faces] (draw-face g transformed face))))
+    (map #(with-meta (map transformed %)
+            (meta %)) faces)))
+
+(defn get-all-faces []
+  (->> (map transform-faces @objects)
+       (apply concat)
+       (filter (fn [el] (every? #(not (nil? %)) el)))))
 
 (defn draw-border [g]
   (sg/draw g
            (sg/rect 2 2 (- width 3) (- height 3))
            (styles :border)))
 
+(defn draw-faces [g faces]
+  (doseq [face faces]
+    (sg/draw g
+             (apply sg/polygon face)
+             (styles :line))))
+
+
 (defn draw [c g]
-  (doseq [object @objects]
+  (draw-faces g (get-all-faces))
+  #_(warnock/draw g (warnock/attach-planes (get-all-faces))
+                [0.0 0.0 (double width) (double height)])
+ #_(doseq [object @objects]
     (draw-object g object))
-  (draw-border g))
+  #_(draw-border g))
 
 
 (defn left-button [e]
@@ -180,5 +202,5 @@
 
 
 (defn -main [& args]
-  (start))
+  (restart))
 

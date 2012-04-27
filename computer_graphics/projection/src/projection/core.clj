@@ -103,9 +103,9 @@
       :z-min z-min)))
 
 (defn transform [point {:keys [matrix matrix-2 z-min]}]
-  (let [[p] (matrix-mult [(conj point 1)] matrix)]
+  (let [[p] (matrix-mult [(conj (vec point) 1)] matrix)]
     (if (<= z-min (p 2) 1)
       (let [[pp] (matrix-mult [p] matrix-2)]
         (->> (mapv #(/ % (last pp)) pp)
-             (take 2)))
+             (take 3)))
       nil)))
