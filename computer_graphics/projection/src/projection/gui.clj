@@ -38,7 +38,7 @@
                      :faces [[0 1 2 3 0]
                              [4 5 6 7 4]]}]))
 
-(def objects (atom [(attach-styles (digits/digits-map \0))
+(def objects (atom [(attach-styles (digits/digits-map :cube))
                     #_(digits/digits-map \1)]))
 
 (def width 750)
@@ -104,12 +104,12 @@
 
 
 (defn draw [c g]
-  (draw-faces g (get-all-faces))
-  #_(warnock/draw g (warnock/attach-planes (get-all-faces))
+  #_(draw-faces g (get-all-faces))
+  (warnock/draw g (warnock/attach-planes (get-all-faces))
                 [0.0 0.0 (double width) (double height)])
  #_(doseq [object @objects]
     (draw-object g object))
-  #_(draw-border g))
+  (draw-border g))
 
 
 (defn left-button [e]
@@ -127,10 +127,10 @@
   (.repaint (sc/select frame [:#canvas])))
 
 (defn mouse-wheel [e]
-  (let [dist (* (.getWheelRotation e) speed -1)
-        move (fn [{:keys [COP VPN] :as config}]
+  (let [dist (* (.getWheelRotation e) 0.1 -1)
+        move (fn [{:keys [focus] :as config}]
                (assoc config
-                 :COP (mapv + COP (core/mult dist VPN))))]
+                 :focus (+ focus dist)))]
     (swap! config move))
   (recalculate)
   (.repaint (sc/select frame [:#canvas])))
@@ -193,7 +193,7 @@
 (defn restart []
   (def frame (create-frame))
   (.setFocusable (sc/select frame [:#canvas]) true)
-  (run-timer)
+  #_(run-timer)
   (recalculate)
   (start))
 

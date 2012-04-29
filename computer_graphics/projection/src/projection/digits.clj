@@ -38,6 +38,16 @@
                         (create-faces b-in b-out)
                         (create-faces f-in b-in)
                         (create-faces f-out b-out)))}
+   :cube {:points (create-points
+                   [0 0]
+                   [1 0]
+                   [1 1]
+                   [0 1])
+          :faces (let [f (rangel 4)
+                       b (rangel 4 8)]
+                   (concat (create-faces f b)
+                           [[0 1 2 3 0]
+                            [4 5 6 7 4]]))}
    \1 {:points (create-points
                 [0 0]
                 [0 1]

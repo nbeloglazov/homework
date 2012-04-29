@@ -79,6 +79,9 @@
         D (+ (* x1 (- (* y2 z3) (* y3 z2)))
              (* x2 (- (* y3 z1) (* y1 z3)))
              (* x3 (- (* y1 z2) (* y2 z1))))]
+    (when (zero? C)
+      (println [x1 y1 z1] [x2 y2 z2] [z3 y3 z3])
+      (println A B C D))
     (fn [x y]
       (/ (- D (+ (* A x) (* B y)))
          C))))
