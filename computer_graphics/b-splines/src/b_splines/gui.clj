@@ -25,7 +25,8 @@
   (when (>  (count @points) @degree)
     (let [spline (core/get-b-spline @points @degree)
           lines (->> (range 0 1 step)
-                     (map spline)
+                     (mapv spline)
+                     (#(conj % (last @points)))
                      (partition 2 1)
                      (map flatten))]
       (doseq [l lines]
