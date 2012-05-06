@@ -1,4 +1,4 @@
-(ns gcj2012.qualC)
+(ns gcj2012.qual.qualC)
 
 (defn shift [num max]
   (+ (* max (mod num 10))

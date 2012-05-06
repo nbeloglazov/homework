@@ -1,4 +1,4 @@
-(ns gcj2012.qualA)
+(ns gcj2012.qual.qualA)
 
 (def pairs [["ejp mysljylc kd kxveddknmc re jsicpdrysi" "our language is impossible to understand"]
             ["rbcpc ypc rtcsra dkh wyfrepkym veddknkmkrkcd" "there are twenty six factorial possibilities"]
