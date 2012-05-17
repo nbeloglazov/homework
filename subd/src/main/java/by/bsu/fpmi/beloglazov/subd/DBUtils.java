@@ -21,7 +21,8 @@ public final class DBUtils {
 
     public static RowSet getAll(Entity entity) throws SQLException {
 
-        JdbcRowSet rowSet = new JdbcRowSetImpl(getConnection());
+        Connection connection = getConnection();
+        JdbcRowSet rowSet = new JdbcRowSetImpl(connection);
         String query = String.format("select %s from %s;",
                 StringUtils.join(entity.getFields(), ", "),
                 entity.getName());

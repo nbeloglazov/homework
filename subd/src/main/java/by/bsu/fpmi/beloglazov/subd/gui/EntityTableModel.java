@@ -4,41 +4,40 @@ import by.bsu.fpmi.beloglazov.subd.DBUtils;
 import by.bsu.fpmi.beloglazov.subd.Entity;
 
 import javax.sql.RowSet;
-import javax.swing.event.TableModelListener;
-import javax.swing.table.TableModel;
+import javax.swing.table.AbstractTableModel;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class EntityTableModel implements TableModel {
+public class EntityTableModel extends AbstractTableModel {
 
     private RowSet rowSet;
     private Entity entity;
     private int rowCount;
     private int columnCount;
     private List<Class<?>> columnClasses;
-    private Map<String, Object> updates;
+    private Map<Integer, Map<Integer, Object>> updates;
 
     public EntityTableModel(Entity entity) throws SQLException, ClassNotFoundException {
         this.entity = entity;
         this.rowSet = DBUtils.getAll(entity);
-        rowCount = 0;
-        rowSet.first();
-        while (rowSet.next()) {
-            rowCount++;
-        }
         columnCount = entity.getFields().size();
         columnClasses = new ArrayList<Class<?>>(columnCount);
         for (int i = 0; i < columnCount; i++) {
             columnClasses.add(Class.forName(rowSet.getMetaData().getColumnClassName(i + 1)));
         }
-        updates = new HashMap<String, Object>();
+        recount();
+        updates = new HashMap<Integer, Map<Integer, Object>>();
     }
 
-    public void addTableModelListener(TableModelListener l) {
-        //To change body of implemented methods use File | Settings | File Templates.
+    private void recount() throws  SQLException {
+        rowCount = 1;
+        rowSet.first();
+        while (rowSet.next()) {
+            rowCount++;
+        }
     }
 
     public int getRowCount() {
@@ -63,9 +62,8 @@ public class EntityTableModel implements TableModel {
 
     public Object getValueAt(int rowIndex, int columnIndex) {
         try {
-            Object result = getUpdate(rowIndex, columnIndex);
-            if (result != null) {
-                return result;
+            if (updates.containsKey(rowIndex) && updates.get(rowIndex).containsKey(columnIndex)) {
+                return updates.get(rowIndex).get(columnIndex);
             }
             rowSet.absolute(rowIndex + 1);
             return rowSet.getObject(columnIndex + 1);
@@ -75,24 +73,34 @@ public class EntityTableModel implements TableModel {
     }
 
     public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-        try {
-            rowSet.absolute(rowIndex + 1);
-            rowSet.updateObject(columnIndex + 1, aValue);
-            setUpdate(rowIndex, columnIndex, aValue);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        if (!updates.containsKey(rowIndex)) {
+            updates.put(rowIndex, new HashMap<Integer, Object>());
         }
+        updates.get(rowIndex).put(columnIndex, aValue);
     }
 
-    public void removeTableModelListener(TableModelListener l) {
-
+    public void commit() throws SQLException {
+        for (Map.Entry<Integer, Map<Integer, Object>> rowUpdate: updates.entrySet()) {
+            rowSet.absolute(rowUpdate.getKey() + 1);
+            for (Map.Entry<Integer, Object> column : rowUpdate.getValue().entrySet()) {
+                rowSet.updateObject(column.getKey() + 1, column.getValue());
+            }
+            rowSet.updateRow();
+        }
+        refresh();
     }
 
-    private void setUpdate(int row, int column, Object value) {
-        updates.put(row + ";" + column, value);
+    public void refresh() throws SQLException {
+        updates.clear();
+        rowSet.close();
+        rowSet = DBUtils.getAll(entity);
+        recount();
+        fireTableDataChanged();
     }
 
-    private Object getUpdate(int row, int column) {
-        return updates.get(row + ";" + column);
+    public void delete(int row) throws SQLException {
+        rowSet.absolute(row);
+        rowSet.deleteRow();
+        refresh();
     }
 }
