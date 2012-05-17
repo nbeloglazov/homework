@@ -17,6 +17,9 @@ public abstract class EntityActionListener implements ActionListener {
         this.parent = parent;
     }
 
+    protected EntityActionListener() {
+    }
+
     public EntityTableModel getEntityModel() {
         return entityModel;
     }

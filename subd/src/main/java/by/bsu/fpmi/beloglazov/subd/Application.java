@@ -14,9 +14,6 @@ public class Application {
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
-        for (Entity entity : Entity.values()) {
-            printEntities(entity);
-        }
     }
 
     private static void printEntities(Entity entity) throws SQLException {

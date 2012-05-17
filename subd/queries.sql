@@ -22,7 +22,8 @@ where ((((select count(*)
           where t3.DayOfWeek = t1.DayOfWeek))
          = (select min(NumberOfClassrooms)
             from (select count(*) as NumberOfClassrooms
-                  from (select LEsson.ClassroomID, Lesson.DayOfWeek
+                  from (select Lesson.ClassroomID, Lesson.DayOfWeek
                         from Lesson group by Lesson.DayOfWeek, Lesson.ClassroomID) t4
-                        group by t4.DayOfWeek))))
+                        group by t4.DayOfWeek) t5)))
+
 group by t1.DayOfWeek;

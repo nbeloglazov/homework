@@ -7,6 +7,7 @@ import javax.sql.RowSet;
 import javax.swing.table.AbstractTableModel;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class EntityTableModel extends AbstractTableModel {
     }
 
     public int getRowCount() {
-        return rowCount;
+        return rowCount + 1;
     }
 
     public int getColumnCount() {
@@ -64,9 +65,12 @@ public class EntityTableModel extends AbstractTableModel {
         try {
             if (updates.containsKey(rowIndex) && updates.get(rowIndex).containsKey(columnIndex)) {
                 return updates.get(rowIndex).get(columnIndex);
+            } else if (rowIndex == rowCount) {
+                return null;
+            } else {
+                rowSet.absolute(rowIndex + 1);
+                return rowSet.getObject(columnIndex + 1);
             }
-            rowSet.absolute(rowIndex + 1);
-            return rowSet.getObject(columnIndex + 1);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -98,9 +102,23 @@ public class EntityTableModel extends AbstractTableModel {
         fireTableDataChanged();
     }
 
-    public void delete(int row) throws SQLException {
-        rowSet.absolute(row);
-        rowSet.deleteRow();
+    public void delete(int... rows) throws SQLException {
+        Arrays.sort(rows);
+        for (int i = rows.length - 1; i >= 0; i--) {
+            rowSet.absolute(rows[i] + 1);
+            rowSet.deleteRow();
+        }
         refresh();
+    }
+
+    public void addRow() throws SQLException {
+        if (updates.containsKey(rowCount)) {
+            rowSet.moveToInsertRow();
+            for (Map.Entry<Integer,Object> column : updates.get(rowCount).entrySet()) {
+                rowSet.updateObject(column.getKey() + 1, column.getValue());
+            }
+            rowSet.insertRow();
+            refresh();
+        }
     }
 }
