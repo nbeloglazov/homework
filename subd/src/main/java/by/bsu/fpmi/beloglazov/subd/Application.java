@@ -4,6 +4,7 @@ import by.bsu.fpmi.beloglazov.subd.gui.SubdFrame;
 
 import javax.sql.RowSet;
 import javax.swing.JFrame;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
@@ -17,7 +18,7 @@ public class Application {
     }
 
     private static void printEntities(Entity entity) throws SQLException {
-        RowSet rowSet = DBUtils.getAll(entity);
+        ResultSet rowSet = DBUtils.getAll(entity);
         System.out.println(entity.getName());
         while (rowSet.next()) {
             for (String field : entity.getFields()) {

@@ -2,6 +2,7 @@ package by.bsu.fpmi.beloglazov.subd;
 
 import com.sun.rowset.JdbcRowSetImpl;
 import org.apache.commons.lang.StringUtils;
+import org.sqlite.JDBC;
 
 import javax.sql.RowSet;
 import javax.sql.rowset.JdbcRowSet;
@@ -20,22 +21,86 @@ public final class DBUtils {
 
     private static final String USERNAME = "scott";
     private static final String PASSWORD = "tiger";
-    private static final String URL = "jdbc:mysql://localhost:3306/subd";
+    private static final String URL = "jdbc:sqlite:database.db";
+    private static Connection connection;
 
-    public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USERNAME, PASSWORD);
+    static {
+        try {
+            DriverManager.registerDriver(new JDBC());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
-    public static RowSet getAll(Entity entity) throws SQLException {
+    public static Connection getConnection() throws SQLException {
+        if (connection == null) {
+            connection = DriverManager.getConnection(URL);
+        }
+        return connection;
+    }
+
+    public static ResultSet getAll(Entity entity) throws SQLException {
 
         Connection connection = getConnection();
-        JdbcRowSet rowSet = new JdbcRowSetImpl(connection);
         String query = String.format("select %s from %s;",
                 StringUtils.join(entity.getFields(), ", "),
                 entity.getName());
-        rowSet.setCommand(query);
-        rowSet.execute();
-        return rowSet;
+        Statement statement = connection.createStatement();
+        return statement.executeQuery(query);
+    }
+
+    public static void update(Entity entity, Map<String, Object> orig, Map<String, Object> updates) throws SQLException {
+        List<Object> params = new ArrayList<Object>();
+        String setClause = buildClause(updates, params);
+        String whereClause = buildWhereClause(orig, params);
+        String query = String.format("update %s set %s where %s ;", entity.getName(), setClause, whereClause);
+        runQuery(query, params);
+    }
+
+    public static void insert(Entity entity, Map<String, Object> obj) throws SQLException {
+        List<String> fields = new ArrayList<String>();
+        List<Object> params = new ArrayList<Object>();
+        for (Map.Entry<String, Object> field : obj.entrySet()) {
+            fields.add(field.getKey());
+            params.add(field.getValue());
+        }
+        String fieldsClause = StringUtils.join(fields, ", ");
+        String valuesClause = StringUtils.repeat("?",", ", fields.size());
+        String query = String.format("insert into %s (%s) values (%s);", entity.getName(), fieldsClause, valuesClause);
+        runQuery(query, params);
+    }
+
+    public static void delete(Entity entity, Map<String, Object> obj) throws SQLException {
+        List<Object> params = new ArrayList<Object>();
+        String whereClause = buildWhereClause(obj, params);
+        String query = String.format("delete from %s where %s;", entity.getName(), whereClause);
+        runQuery(query, params);
+    }
+
+    private static void runQuery(String query, List<Object> params) throws SQLException {
+        PreparedStatement statement = getConnection().prepareStatement(query);
+        for (int i = 0; i < params.size(); i++) {
+            statement.setObject(i + 1, params.get(i));
+        }
+        statement.executeUpdate();
+    }
+
+    private static String buildWhereClause(Map<String, Object> orig, List<Object> params) {
+        if (orig.containsKey("ID")){
+            params.add(orig.get("ID"));
+            return "ID = ?";
+        } else {
+            return buildClause(orig, params);
+        }
+    }
+
+    private static String buildClause(Map<String, Object> orig, List<Object> params) {
+        List<String> fields = new ArrayList<String>();
+        for (Map.Entry<String, Object> field : orig.entrySet()) {
+            fields.add(field.getKey() + " = ? ");
+            params.add(field.getValue());
+        }
+        return StringUtils.join(fields, ", ");
     }
 
     public static List<String> findTeachersForDayAndClassroom(int day, int classroom) throws SQLException {
@@ -59,7 +124,6 @@ public final class DBUtils {
             return names;
         } finally {
             statement.close();
-            connection.close();
         }
     }
 
@@ -79,7 +143,6 @@ public final class DBUtils {
             return names;
         } finally {
             statement.close();
-            connection.close();
         }
     }
 
@@ -110,7 +173,6 @@ public final class DBUtils {
             return days;
         } finally {
             statement.close();
-            connection.close();
         }
     }
 
