@@ -45,6 +45,7 @@
 
 (defn start []
   (reset! data (-> (read-data) core/parse-data core/teach))
+  (println @data)
   (-> (create-frame)
       sc/pack!
       sc/show!))

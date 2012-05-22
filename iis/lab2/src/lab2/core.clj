@@ -14,7 +14,6 @@
   (reduce #(assoc % %2 (f %2)) {} coll))
 
 (defn averages [objects attrs]
-  (println attrs objects)
   (let [m (count objects)
         average #(/ (count (filter % objects)) m)]
     (map-fn average attrs)))
