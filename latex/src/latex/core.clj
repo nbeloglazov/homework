@@ -51,8 +51,8 @@
     :single-restr (partition m !single-restr)
     :inter-restr !inter-restr
     :eq-n eq-n
-    :eq-coeffs eq-coeffs
-    :goal-coeffs goal-coeffs
+    :eq-coeffs (map #(partition m %) (partition !total-x eq-coeffs))
+    :goal-coeffs (partition m goal-coeffs)
     :single-restr-right single-restr-right
     :inter-restr-right inter-restr-right
     :ver-sum (partition n ver-sum)
@@ -64,3 +64,105 @@
       parse-data
       build-graph))
 
+(defn stringify [obj]
+  (apply str (if (coll? obj) (flatten obj) obj)))
+
+(defn join-lines [coll]
+  (string/join \newline coll))
+
+(defn header [_]
+  "\\documentclass{article}
+\\usepackage{amssymb,amsmath}
+\\usepackage[english,russian]{babel}
+\\usepackage{graphicx}
+\\begin{document}
+\\begin{center}")
+
+(defn bs
+  ([_] (bs))
+  ([]  "\\bigskip"))
+
+(defn footer [_]
+  "
+\\end{center}
+\\end{document}
+")
+
+(defn make-x [ind coef indices layer]
+  (if (zero? coef) ""
+      (format "%s%sx_{%s}^{%s}"
+              (if (or (zero? ind) (neg? coef)) "" "+")
+              (cond (= 1 coef) ""
+                    (= -1 coef) "-"
+                    :else coef)
+              (apply str indices)
+              (inc layer))))
+
+(defn goal [{:keys [goal-coeffs edges]}]
+  ["$"
+   (map-indexed
+    (fn [layer coeffs]
+      (map (fn [ind coef x]
+             (make-x ind coef x layer))
+           (range) coeffs edges))
+    goal-coeffs)
+   "\\to\\min$\\\\"])
+
+(defn vertices-sum [{:keys [edges ver-sum]}]
+  (letfn [(vertex-sum [n layer sum]
+            ["$" (->> edges
+                      (filter #((set %) n))
+                      (map-indexed (fn [ind [a b]]
+                                     (make-x ind
+                                             (if (= n a) 1 -1)
+                                             [a b]
+                                             layer))))
+             "="
+             sum
+             "$\\\\"])
+          (vertices-sum-layer [layer ver-sum]
+            (->> ver-sum
+                 (map-indexed #(vertex-sum (inc %1) layer %2))
+                 (map stringify)
+                 join-lines))]
+    (->> ver-sum
+         (map-indexed vertices-sum-layer)
+         (interpose (bs))
+         join-lines)))
+
+(defn equations [{:keys [eq-right eq-coeffs edges]}]
+  (letfn [(single-equation [coeffs value]
+            ["$" (map-indexed
+                  (fn [layer coeffs]
+                    (map
+                     (fn [ind coeff edge]
+                       (make-x (if (and (zero? layer) (zero? ind)) 0 1)
+                               coeff
+                               edge
+                               layer))
+                     (range) coeffs edges))
+                  coeffs)
+             "="
+             value
+             "$\\\\"])]
+    (->> (map single-equation eq-coeffs eq-right)
+         (map stringify)
+         (interpose (bs))
+         join-lines)))
+
+(def structure
+  [header
+   goal
+   bs
+   vertices-sum
+   bs
+   equations
+   footer])
+
+
+(defn build-tex [graph]
+  (->> (map #(% graph) structure)
+       (map #(if (coll? %) (flatten %) %))
+       (map #(apply str %))
+       (string/join \newline)
+       (spit "output.tex")))
