@@ -1,5 +1,6 @@
 (ns latex.core
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [clojure.set :as set]))
 
 (defn remove-comments-and-whitespaces [text]
   (->> (string/split-lines text)
@@ -150,6 +151,117 @@
          (interpose (bs))
          join-lines)))
 
+(defn inter-restrictions [{:keys [inter-restr-right inter-restr layers-n edges]}]
+  (letfn [(restriction [upper-bound edge]
+            (doall ["$"
+                    (map #(make-x % 1 edge %) (range layers-n))
+                    "\\leq"
+                    upper-bound
+                    (map #(vector ",~" (make-x 0 1 edge %) "\\geq0")
+                         (range layers-n))
+                    "$\\\\"]))]
+    (->> (map #(if % %2 nil) inter-restr edges)
+         (remove nil?)
+         (map restriction inter-restr-right)
+         (map stringify)
+         join-lines)))
+
+(defn single-restrictions [{:keys [single-restr single-restr-right edges layers-n inter-restr]}]
+  (let [with-restr (mapcat (fn [layer restr]
+                             (->> (map #(if % %2 nil) restr edges)
+                                  (remove nil?)
+                                  (map #(vector layer %))))
+                           (range)
+                           single-restr)
+        used (->> (map #(if % %2 nil) inter-restr edges)
+                  (remove nil?)
+                  (mapcat #(map (fn [layer] [layer %]) (range layers-n)))
+                  set
+                  (set/union (set with-restr)))
+        double-restriction (fn [[layer edge] upper-bound]
+                             ["$0\\leq "
+                              (make-x 0 1 edge layer)
+                              "\\leq"
+                              upper-bound
+                              "$\\\\"])
+        single-restriction (fn [[layer edge]]
+                             ["$"
+                              (make-x 0 1 edge layer)
+                              "\\geq0$\\\\"])]
+    (->> [(map double-restriction with-restr single-restr-right)
+          (bs)
+          (->> (for [edge edges layer (range layers-n)]
+                 (if (used [layer edge]) nil [layer edge]))
+               (remove nil?)
+               (map single-restriction))]
+         (map stringify)
+         join-lines)))
+
+(defn table [{:keys [layers-n edges m layers single-restr inter-restr]}]
+  (let [bool-to-plus (fn [coll] (map #(if % "+" "") coll))
+        transpose (fn [coll] (apply map #(apply vector %&) coll))
+        to-pluses (fn [coll] (->> (transpose coll)
+                                  flatten
+                                  bool-to-plus))
+        build-set (fn [ind u]
+                    (let [set (filter #(nth (nth u %) ind) (range layers-n))]
+                      (if (empty? set)
+                        "\\varnothing"
+                        ["\\{"
+                         (interpose "," (map inc set))
+                         "\\}"])))
+        multicolumn (fn [ind value]
+                      (format "\\multicolumn{%d}{|c|%s}{$%s$}"
+                              layers-n
+                              (if (= ind (dec m)) "" "|")
+                              (stringify value)))
+        build-all-sets (fn [u]
+                         (map-indexed
+                          #(multicolumn % (build-set %2 u))
+                          (range m)))
+        hline (fn [name els]
+                ["\\hline$"
+                 name
+                 "$"
+                 (interleave (repeat "&") els)
+                 "\\\\"])]
+    (->> [["\\begin{tabular}{|l|"
+           (->> (repeat (inc layers-n) "|")
+                (interpose "c")
+                (apply str)
+                (repeat m))
+           "}"]
+          (hline "(i, j)"
+                 (map-indexed
+                  (fn [ind [a b]]
+                    (multicolumn ind [\( a ", " b \)]))
+                  edges))
+          (hline "k" (->> (range layers-n)
+                          (map inc)
+                          (repeat m)
+                          flatten))
+          "\\hline"
+          (hline "U^k"
+                 (to-pluses layers))
+          (hline "U_1^k"
+                 (to-pluses single-restr))
+          (hline "U_0"
+                 (map-indexed multicolumn (bool-to-plus inter-restr)))
+          "\\hline"
+          (hline "K(i,j)"
+                 (build-all-sets layers))
+          (hline "K_1(i,j)"
+                 (build-all-sets single-restr))
+          (hline "K_0(i,j)"
+                 (let [all-layers ["\\{"
+                                   (interpose ", " (map inc (range layers-n)))
+                                   "\\}"]]
+                   (map-indexed #(multicolumn % (if %2 all-layers "")) inter-restr)))
+          "\\hline"
+          "\\end{tabular}"]
+         (map stringify)
+         join-lines)))
+
 (def structure
   [header
    goal
@@ -157,6 +269,13 @@
    vertices-sum
    bs
    equations
+   bs
+   inter-restrictions
+   bs
+   single-restrictions
+   bs
+   table
+   bs
    footer])
 
 
