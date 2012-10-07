@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.23/jquery-ui.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.23/i18n/jquery-ui-i18n.min.js"></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+    <script type="text/javascript">
+      $(function() {
+        $.datepicker.setDefaults($.datepicker.regional["ru"]);
+        $('input').datepicker({
+          minDate: new Date(2012, 9, 1),
+          maxDate: new Date(),
+          onSelect: function() {
+            var from = WCW.from();
+            var to = WCW.to();
+            var enable = from !== null && to !== null && from <= to;
+            $('#run').button(enable ? 'enable' : 'disable');
+         }
+        });
+        $('#run')
+          .button()
+          .button('disable')
+          .on('click', WCW.updateAll);
+      });
+
+      WCW = {
+        date: function(id) {
+          var date = $('#' + id).datepicker('getDate');
+          if (date) {
+            return date.getDate();
+          } else {
+            return null;
+          }
+        },
+
+        from: function() { return WCW.date('from'); },
+
+        to: function() { return WCW.date('to'); },
+
+        updateChart: function(name) {
+          var from = WCW.from();
+          var to = WCW.to();
+          var selector = '#' + name + ' .chart';
+          $(selector).attr('src', '/chart/' + name + '?from=' + from + '&to=' + to)
+            .load(function() {
+              $('#' + name).removeClass('hidden');
+              $('#' + name + '_loading').addClass('hidden');
+            });
+        },
+
+        updateData: function(name) {
+          var dl = $('#' + name + ' .data');
+          dl.empty();
+          var url = '/data/' + name + '.json';
+          $.getJSON(url, {from: WCW.from(), to: WCW.to()}, function(data) {
+            var items = [];
+            $.each(data, function() {
+              items.push('<dt>' + this[0] + '</dt><dd>' + this[1] + '</dd>');
+            });
+            dl.append(items);
+            WCW.updateChart(name);
+          });
+        },
+
+        updateAll: function() {
+          $('img.hidden').removeClass('hidden');
+          $('#currency, #weather').addClass('hidden');
+          WCW.updateData('currency');
+          WCW.updateData('weather');
+          //WCW.updateChart('currency');
+          //WCW.updateChart('weather');
+        }
+      };
+    </script>
+
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css"/>
+    <style>
+      body {
+        text-align: center;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+    <body>
+
+      <h1>Web-programming rules!</h1>
+
+      <div>
+        От:
+        <input type="text" id="from"/>
+        До:
+        <input type="text" id="to"/>
+        <button id="run">Показать</button>
+      </div>
+      <div id="currency" class="hidden">
+        <h3>Курс валют евро к фунту</h3>
+        <dl class="data"></dl>
+        <img class="chart"/>
+      </div>
+      <div>
+         <img id="currency_loading" src="http://www.unfriendable.com/images/ajax_loader.gif" class="hidden"/>
+      </div>
+      <div id="weather" class="hidden">
+        <h3>Погода в Москве</h3>
+        <dl class="data"></dl>
+        <img class="chart"/>
+      </div>
+      <div>
+        <img id="weather_loading" src="http://www.unfriendable.com/images/ajax_loader.gif" class="hidden"/>
+      </div>
+    </body>
+</html>
+
