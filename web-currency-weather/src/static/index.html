@@ -11,7 +11,7 @@
         $.datepicker.setDefaults($.datepicker.regional["ru"]);
         $('input').datepicker({
           minDate: new Date(2012, 9, 1),
-          maxDate: new Date(),
+          maxDate: new Date(2012, 9, new Date().getDate() - 1),
           onSelect: function() {
             var from = WCW.from();
             var to = WCW.to();
@@ -51,13 +51,16 @@
         },
 
         updateData: function(name) {
-          var dl = $('#' + name + ' .data');
+          var dl = $('#' + name + ' dl');
           dl.empty();
           var url = '/data/' + name + '.json';
           $.getJSON(url, {from: WCW.from(), to: WCW.to()}, function(data) {
             var items = [];
-            $.each(data, function() {
+            $.each(data.data, function() {
               items.push('<dt>' + this[0] + '</dt><dd>' + this[1] + '</dd>');
+            });
+            $.each(data.prediction, function() {
+              items.push('<dt class="prediction">' + this[0] + '</dt><dd class="prediction">' + this[1] + '</dd>');
             });
             dl.append(items);
             WCW.updateChart(name);
@@ -69,8 +72,6 @@
           $('#currency, #weather').addClass('hidden');
           WCW.updateData('currency');
           WCW.updateData('weather');
-          //WCW.updateChart('currency');
-          //WCW.updateChart('weather');
         }
       };
     </script>
@@ -82,6 +83,22 @@
       }
       .hidden {
         display: none;
+      }
+      dl {
+        width: 250px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      dt {
+        float: left;
+        clear: left;
+      }
+      dd {
+        float: right;
+        clear: right
+      }
+      .prediction {
+        font-style: italic;
       }
     </style>
     <body>
@@ -97,7 +114,7 @@
       </div>
       <div id="currency" class="hidden">
         <h3>Курс валют евро к фунту</h3>
-        <dl class="data"></dl>
+        <dl></dl>
         <img class="chart"/>
       </div>
       <div>
@@ -105,7 +122,7 @@
       </div>
       <div id="weather" class="hidden">
         <h3>Погода в Москве</h3>
-        <dl class="data"></dl>
+        <dl></dl>
         <img class="chart"/>
       </div>
       <div>

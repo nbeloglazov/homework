@@ -5,28 +5,47 @@
             [clojure.data.json :as json]
             [incanter.charts :as charts]))
 
-(def weather-key "KEY")
+(def weather-key "186492758e4eee07")
 
-(defn currency [day]
-  (let [{{:keys [EUR GBP] :as res} :rates}  (-> (format "http://openexchangerates.org/api/historical/2012-10-%02d.json" day)
-                                                io/reader
-                                                json/read-json)]
-    (/ GBP EUR)))
-
-(defn weather [day]
-  (let [observations (-> (format "http://api.wunderground.com/api/%s/history_201210%02d/q/RU/Moscow.json" weather-key day)
-                         io/reader
-                         json/read-json
-                         (get-in [:history :observations]))]
-    (->> (map :tempm observations)
-         (map bigdec)
-         (apply max))))
-
-(def get-data
+(def currency
   (memoize
-   (fn [fn from to]
-     (->> (range from (inc to))
-          (map #(vector (format "%02d.10.12" %) (fn %)))))))
+   (fn [day]
+     (let [{{:keys [EUR GBP] :as res} :rates}  (-> (format "http://openexchangerates.org/api/historical/2012-10-%02d.json" day)
+                                                   io/reader
+                                                   json/read-json)]
+       (/ GBP EUR)))))
+
+(def weather
+  (memoize
+   (fn [day]
+     (let [observations (-> (format "http://api.wunderground.com/api/%s/history_201210%02d/q/RU/Moscow.json" weather-key day)
+                            io/reader
+                            json/read-json
+                            (get-in [:history :observations]))]
+       (->> (map :tempm observations)
+            (map bigdec)
+            (apply max))))))
+
+(defn predict [vals]
+  (let [[x0 x1 x2] (reverse (map second vals))
+        last-day (first (last vals))
+        dx (if (nil? x1) 0 (- x0 x1))
+        ddx (if (nil? x2) 0 (+ x0 x2 (* -2 x1)))]
+    [[(+ 1 last-day) (+ x0 dx)]
+     [(+ 2 last-day) (+ x0 dx dx ddx)]]))
+
+(defn datify-single [[day val]]
+  [(format "%02d.10.12" day) val])
+
+(defn get-data [fn from to]
+  (let [datify #(map datify-single %)
+        data (->> (range from (inc to))
+                  (map #(vector % (fn %))))
+        prediction (predict data)]
+    {:data (datify data)
+     :prediction (datify prediction)}))
+
+
 
 (defn build-chart [series title y-label]
   (let [chart (charts/bar-chart
@@ -81,11 +100,13 @@
 
 (defmethod handle "/chart/weather" [{{:keys [from to]} :params}]
   (-> (get-data weather from to)
+      :data
       (build-chart "Температура в Москве" "°C")
       response-chart))
 
 (defmethod handle "/chart/currency" [{{:keys [from to]} :params}]
   (-> (get-data currency from to)
+      :data
       (build-chart "Курс валют евро к фунту" "Курс")
       response-chart))
 
