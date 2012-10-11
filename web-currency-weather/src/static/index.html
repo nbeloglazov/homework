@@ -57,10 +57,18 @@
           $.getJSON(url, {from: WCW.from(), to: WCW.to()}, function(data) {
             var items = [];
             $.each(data.data, function() {
-              items.push('<dt>' + this[0] + '</dt><dd>' + this[1] + '</dd>');
+              var valStr = '' + this[1];
+              if (valStr.length > 7) {
+                valStr = valStr.substring(0, 7);
+              }
+              items.push('<dt>' + this[0] + '</dt><dd>' + valStr + '</dd>');
             });
             $.each(data.prediction, function() {
-              items.push('<dt class="prediction">' + this[0] + '</dt><dd class="prediction">' + this[1] + '</dd>');
+              var valStr = '' + this[1];
+              if (valStr.length > 7) {
+                valStr = valStr.substring(0, 7);
+              }
+              items.push('<dt class="prediction">' + this[0] + '</dt><dd class="prediction">' + valStr + '</dd>');
             });
             dl.append(items);
             WCW.updateChart(name);
@@ -107,9 +115,9 @@
 
       <div>
         От:
-        <input type="text" id="from"/>
+        <input type="text" id="from" value=""/>
         До:
-        <input type="text" id="to"/>
+        <input type="text" id="to" value=""/>
         <button id="run">Показать</button>
       </div>
       <div id="currency" class="hidden">
